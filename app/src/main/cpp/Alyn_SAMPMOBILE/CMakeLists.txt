@@ -62,9 +62,13 @@ target_compile_options(${PROJECT_NAME} PRIVATE
         -fstack-protector # Stack protector
 #        -fvisibility=hidden # Hide symbols
 #        -fvisibility-inlines-hidden # Hide inline symbols
-)
-
 target_compile_definitions(${PROJECT_NAME} PRIVATE RAKSAMP_CLIENT)
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Deps/Opus/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Deps/Encoding/include"
+)
 
 add_subdirectory(Memory)
 add_subdirectory(Deps)
