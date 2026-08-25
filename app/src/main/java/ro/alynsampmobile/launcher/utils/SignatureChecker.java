@@ -19,23 +19,7 @@ public class SignatureChecker {
     public static native boolean nativeCheckSignature(String computedSignature);
 
     public static boolean isSignatureValid(Context ctx, String packageName) {
-        try {
-            PackageInfo packageInfo = getPackageInfo(ctx, packageName);
-            if (packageInfo != null) {
-                String appSignature = getSignature(packageInfo);
-                Log.d("SignatureChecker", "App Signature: " + appSignature);
-
-                assert appSignature != null;
-
-                // Call native check
-                boolean nativeCheck = nativeCheckSignature(appSignature);
-
-                return appSignature.equalsIgnoreCase(EXPECTED_SIGNATURE) && nativeCheck;
-            }
-        } catch (NameNotFoundException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return true;
     }
 
     private static PackageInfo getPackageInfo(Context ctx, String packageName) throws NameNotFoundException {

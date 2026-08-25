@@ -1,0 +1,28 @@
+{
+  "project_info": {
+    "project_number": "1234567890",
+    "project_id": "alyn-samp-mobile",
+    "storage_bucket": "alyn-samp-mobile.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1234567890:android:abcdef123456",
+        "android_client_info": {
+          "package_name": "ro.alynsampmobile.launcher"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "AIzaSyDummyKeyForBuildProcessOnly"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
