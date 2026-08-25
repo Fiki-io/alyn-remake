@@ -308,26 +308,28 @@ public class SplashActivity extends AppCompatActivity implements GLSurfaceView.R
 
                 if (!Utils.appStatus()) {
                     Utils.showAppStatusWarning(SplashActivity.this);
-                    if (gameStatus == UpdateActivity.GameStatus.GameFilesUpdateRequired) {
-                        try {
-                            new AlertDialog.Builder(SplashActivity.this)
-                                    .setTitle("Game Data:")
-                                    .setMessage("Data game GTA SA perlu diunduh/diperbarui agar game berjalan normal. Unduh data game sekarang?")
-                                    .setPositiveButton("Unduh Data", (dialog, which) -> {
-                                        Intent intent = new Intent(SplashActivity.this, UpdateActivity.class);
-                                        intent.putExtra("mode", UpdateActivity.UpdateMode.GameUpdate.name());
-                                        startActivity(intent);
-                                        finish();
-                                    }).setNegativeButton("Lewati (Masuk Menu)", (dialog, which) -> {
-                                        startMain();
-                                    }).setCancelable(false).show();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            startMain();
-                        }
-                    } else {
+                }
+
+                if (gameStatus == UpdateActivity.GameStatus.GameFilesUpdateRequired) {
+                    try {
+                        new AlertDialog.Builder(SplashActivity.this)
+                                .setTitle("Game Data:")
+                                .setMessage("Data game GTA SA perlu diunduh/diperbarui agar game berjalan normal. Unduh data game sekarang?")
+                                .setPositiveButton("Unduh Data", (dialog, which) -> {
+                                    Intent intent = new Intent(SplashActivity.this, UpdateActivity.class);
+                                    intent.putExtra("mode", UpdateActivity.UpdateMode.GameUpdate.name());
+                                    startActivity(intent);
+                                    finish();
+                                }).setNegativeButton("Lewati (Masuk Menu)", (dialog, which) -> {
+                                    startMain();
+                                }).setCancelable(false).show();
+                    } catch (Exception e) {
+                        e.printStackTrace();
                         startMain();
                     }
+                } else {
+                    startMain();
+                }
             }
         }
     }
