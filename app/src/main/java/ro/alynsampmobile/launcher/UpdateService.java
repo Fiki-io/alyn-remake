@@ -26,9 +26,16 @@ import com.joom.paranoid.Obfuscate;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import kotlin.jvm.internal.Ref;
 import okhttp3.Call;
@@ -339,86 +346,114 @@ public class UpdateService extends Service {
     }
 
     private void downloadGameFiles() {
-        Log.i("UpdateService", "Download Game Files");
+        Log.i("UpdateService", "Download Game Files (Parallel Multi-threaded Engine)");
         mDownloadFailedOffset = 0;
         final ArrayList<FileData> tempUpdateFiles = new ArrayList<>(mUpdateFiles);
         mUpdateFiles.clear();
-        final Ref.IntRef i = new Ref.IntRef();
-        final Ref.LongRef mUpdateFilesSizeCurrent = new Ref.LongRef();
-        mUpdateFilesSizeCurrent.element = 0;
+
+        final AtomicLong currentBytes = new AtomicLong(0);
+        final AtomicInteger completedFiles = new AtomicInteger(0);
+        final AtomicLong lastUiUpdateTime = new AtomicLong(System.currentTimeMillis());
+        final OkHttpClient downloadClient = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .build();
 
         sendLoadingScreen(false, "", 0, 0);
-        for (i.element = 0; i.element < tempUpdateFiles.size(); i.element++) {
-            mDownloadingStatus = true;
-            final FileData fileData = tempUpdateFiles.get(i.element);
 
-            Log.i("UpdateService", i.element + " | filePath = " + fileData.getPath());
-            Log.i("UpdateService", "Request uri = " + fileData.getUrl());
+        // 4 concurrent parallel worker threads
+        ExecutorService executor = Executors.newFixedThreadPool(4);
 
-            File dir = new File(getExternalFilesDir(null), fileData.getPath()).getParentFile();
-            if (!dir.exists()) dir.mkdirs();
+        for (int i = 0; i < tempUpdateFiles.size(); i++) {
+            final FileData fileData = tempUpdateFiles.get(i);
+            executor.submit(() -> {
+                try {
+                    File targetFile = new File(getExternalFilesDir(null), fileData.getPath());
+                    File parentDir = targetFile.getParentFile();
+                    if (parentDir != null && !parentDir.exists()) {
+                        parentDir.mkdirs();
+                    }
 
-            final File file = new File(getExternalFilesDir(null), fileData.getPath());
-            if (file.exists()) file.delete();
+                    // Check if file already exists with exact size (Resume / Skip support)
+                    if (targetFile.exists() && targetFile.length() == fileData.getSize() && fileData.getSize() > 0) {
+                        currentBytes.addAndGet(fileData.getSize());
+                        completedFiles.incrementAndGet();
+                        return;
+                    }
 
-            final Ref.LongRef mLastDownloadedBytesTime = new Ref.LongRef();
-            mLastDownloadedBytesTime.element = System.currentTimeMillis();
-            mDownloadingStatus = true;
-            PRDownloader.download(fileData.getUrl(), dir.toString(), fileData.getName()).build().
-                    setOnStartOrResumeListener(null).
-                    setOnPauseListener(null).
-                    setOnCancelListener(null).
-                    setOnProgressListener(progress -> {
-                        mDownloadingStatus = true;
-                        if (System.currentTimeMillis() - mLastDownloadedBytesTime.element > ((long) 100)) {
-                            mLastDownloadedBytesTime.element = System.currentTimeMillis();
-                            Message outMsg = Message.obtain(mInHandler, 4);
-                            outMsg.getData().putString(NotificationCompat.CATEGORY_STATUS, UpdateActivity.UpdateStatus.DownloadGameFiles.name());
-                            outMsg.getData().putBoolean("withProgress", true);
-                            outMsg.getData().putLong("current", (mUpdateFilesSizeCurrent.element + progress.currentBytes));
-                            outMsg.getData().putLong("total", mUpdateFilesSizeTotal);
-                            outMsg.getData().putString("filename", fileData.getName());
-                            outMsg.getData().putLong("totalfiles", ((long) tempUpdateFiles.size()) - ((long) mDownloadFailedOffset));
-                            outMsg.getData().putLong("currentfile", ((long) i.element) - ((long) mDownloadFailedOffset));
-                            outMsg.replyTo = mMessenger;
-                            if (mActivityMessenger != null) {
-                                try {
-                                    mActivityMessenger.send(outMsg);
-                                } catch (RemoteException e) {
-                                    e.printStackTrace();
+                    File tempFile = new File(targetFile.getAbsolutePath() + ".download");
+                    Request request = new Request.Builder().url(fileData.getUrl()).build();
+
+                    boolean success = false;
+                    for (int attempt = 0; attempt < 3 && !success; attempt++) {
+                        try (Response response = downloadClient.newCall(request).execute()) {
+                            if (response.isSuccessful() && response.body() != null) {
+                                try (InputStream is = response.body().byteStream();
+                                     FileOutputStream fos = new FileOutputStream(tempFile)) {
+                                    byte[] buffer = new byte[32768];
+                                    int read;
+                                    while ((read = is.read(buffer)) != -1) {
+                                        fos.write(buffer, 0, read);
+                                        long nowBytes = currentBytes.addAndGet(read);
+
+                                        long nowTime = System.currentTimeMillis();
+                                        if (nowTime - lastUiUpdateTime.get() > 100) {
+                                            lastUiUpdateTime.set(nowTime);
+                                            Message outMsg = Message.obtain(mInHandler, 4);
+                                            outMsg.getData().putString(NotificationCompat.CATEGORY_STATUS, UpdateActivity.UpdateStatus.DownloadGameFiles.name());
+                                            outMsg.getData().putBoolean("withProgress", true);
+                                            outMsg.getData().putLong("current", nowBytes);
+                                            outMsg.getData().putLong("total", mUpdateFilesSizeTotal);
+                                            outMsg.getData().putString("filename", fileData.getName());
+                                            outMsg.getData().putLong("totalfiles", (long) tempUpdateFiles.size());
+                                            outMsg.getData().putLong("currentfile", (long) completedFiles.get());
+                                            outMsg.replyTo = mMessenger;
+                                            if (mActivityMessenger != null) {
+                                                try {
+                                                    mActivityMessenger.send(outMsg);
+                                                } catch (RemoteException ignored) {
+                                                }
+                                            }
+                                        }
+                                    }
+                                    fos.flush();
                                 }
+
+                                if (targetFile.exists()) {
+                                    targetFile.delete();
+                                }
+                                tempFile.renameTo(targetFile);
+                                success = true;
+                            }
+                        } catch (Exception e) {
+                            if (attempt == 2) {
+                                Log.e("UpdateService", "Failed to download " + fileData.getPath() + ": " + e.getMessage());
+                            }
+                            try {
+                                Thread.sleep(500);
+                            } catch (InterruptedException ignored) {
                             }
                         }
-                    }).
-                    start(new OnDownloadListener() {
-                        @Override
-                        public void onDownloadComplete() {
-                            Log.d("UpdateService", "onDownloadComplete");
-                            mDownloadingStatus = false;
-                            mUpdateFilesSizeCurrent.element += fileData.getSize();
-                        }
+                    }
 
-                        @Override
-                        public void onError(Error error) {
-                            mDownloadingStatus = false;
-                            mUpdateFiles.add(tempUpdateFiles.get(i.element));
-                            mDownloadFailedOffset += 1;
-                            mUpdateFilesSizeTotal -= fileData.getSize();
-                            Log.d("UpdateService", "onError. ServerError = " + (error != null ? error.isServerError() : null) + ". ConnectionError = " + (error != null ? error.isConnectionError() : null));
-                        }
-                    });
-            do {
-                try {
-                    Thread.sleep(30);
-                } catch (InterruptedException e) {
+                    completedFiles.incrementAndGet();
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
-            } while (mDownloadingStatus);
+            });
         }
-        mDownloadingStatus = false;
-        sendLoadingScreen(false, "", 0, 0);
 
-        updateGame();
+        executor.shutdown();
+        new Thread(() -> {
+            try {
+                executor.awaitTermination(2, TimeUnit.HOURS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            sendLoadingScreen(false, "", 0, 0);
+            updateGame();
+        }).start();
     }
 
     private void sendLoadingScreen(final boolean unpacking, final String fileName, final long current, final long total) {

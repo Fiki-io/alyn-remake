@@ -169,32 +169,8 @@ public class SplashActivity extends AppCompatActivity implements GLSurfaceView.R
             return;
         }
 
-        if (!getSharedPreferences("samp_settings", Context.MODE_PRIVATE).getString("files_type", "none").equals("lite") &&
-                !getSharedPreferences("samp_settings", Context.MODE_PRIVATE).getString("files_type", "none").equals("full")) {
-            View view = getLayoutInflater().inflate(R.layout.layout_files_selection, null);
-
-            AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this).setView(view);
-            filesSelectionDialog = dialogBuilder.create();
-
-            MaterialButton lite = view.findViewById(R.id.lite_button);
-            MaterialButton full = view.findViewById(R.id.full_button);
-
-            lite.setOnClickListener(v -> {
-                getSharedPreferences("samp_settings", Context.MODE_PRIVATE).edit().putString("files_type", "lite").apply();
-                dismissDialog();
-                new Handler().postDelayed(() -> bindService(new Intent(this, UpdateService.class), mConnection, Context.BIND_AUTO_CREATE), 2500);
-            });
-
-            full.setOnClickListener(v -> {
-                getSharedPreferences("samp_settings", Context.MODE_PRIVATE).edit().putString("files_type", "full").apply();
-                dismissDialog();
-                new Handler().postDelayed(() -> bindService(new Intent(this, UpdateService.class), mConnection, Context.BIND_AUTO_CREATE), 2500);
-            });
-
-            filesSelectionDialog.show();
-        } else {
-            new Handler().postDelayed(() -> bindService(new Intent(this, UpdateService.class), mConnection, Context.BIND_AUTO_CREATE), 2500);
-        }
+        getSharedPreferences("samp_settings", Context.MODE_PRIVATE).edit().putString("files_type", "standard").apply();
+        new Handler().postDelayed(() -> bindService(new Intent(this, UpdateService.class), mConnection, Context.BIND_AUTO_CREATE), 1000);
     }
 
     private void dismissDialog() {
