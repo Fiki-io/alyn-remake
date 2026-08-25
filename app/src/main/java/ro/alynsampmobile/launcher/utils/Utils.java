@@ -46,15 +46,15 @@ import ro.alynsampmobile.launcher.ui.fragment.SupportPageFragment;
 @Obfuscate
 public class Utils {
     public static String copyright = "Copyright © Alyn_SAMPMOBILE";
-    public static String web = "https://alynsampmobile.pro/";
-    public static String github = "https://github.com/alyn-dev";
-    public static String update = web + "api/update";
-    public static String discord = web + "discord";
-    public static String changelog = web + "api/changelog";
-    public static String hostedServersFileStr = web + "api/servers";
-    public static String bannedServersFileStr = web + "api/banned";
-    public static String faqURL = web + "api/faq";
-    public static String previewsUrl = web + "api/previews";
+    public static String web = "https://huggingface.co/datasets/Kompres/alyn-game-data/raw/main/";
+    public static String github = "https://github.com/Fiki-io/alyn-remake";
+    public static String update = web + "update.json";
+    public static String discord = "https://discord.gg/";
+    public static String changelog = web + "changelog.json";
+    public static String hostedServersFileStr = web + "servers.json";
+    public static String bannedServersFileStr = web + "banned.json";
+    public static String faqURL = web + "faq.json";
+    public static String previewsUrl = web + "previews.json";
 
     private static List<PreviewAdapter.PreviewItem> cachedPreviews = null;
     private static List<SupportPageFragment.FAQItem> cachedFaqs = null;
