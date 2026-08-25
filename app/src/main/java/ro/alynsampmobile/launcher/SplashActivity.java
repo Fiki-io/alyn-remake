@@ -308,41 +308,26 @@ public class SplashActivity extends AppCompatActivity implements GLSurfaceView.R
 
                 if (!Utils.appStatus()) {
                     Utils.showAppStatusWarning(SplashActivity.this);
-                } else {
-                    if (gameStatus == UpdateActivity.GameStatus.GameUpdateRequired && !Utils.isTester(SplashActivity.this)) {
+                    if (gameStatus == UpdateActivity.GameStatus.GameFilesUpdateRequired) {
                         try {
                             new AlertDialog.Builder(SplashActivity.this)
-                                    .setTitle("Update:").setMessage("Game update required! Press 'Update' and download the latest version from the website.")
-                                    .setPositiveButton("Update", (dialog, which) -> {
-                                        /*Intent intent = new Intent(SplashActivity.this, UpdateActivity.class);
-                                        intent.putExtra("mode", UpdateActivity.UpdateMode.GameUpdate.name());
-                                        startActivity(intent);
-                                        finish();*/
-                                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(Utils.web));
-                                        startActivity(intent);
-                                    }).setCancelable(false).show();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    } else if (gameStatus == UpdateActivity.GameStatus.GameFilesUpdateRequired) {
-                        try {
-                            new AlertDialog.Builder(SplashActivity.this)
-                                    .setTitle("Update:").setMessage("Game files update required!")
-                                    .setPositiveButton("Update", (dialog, which) -> {
+                                    .setTitle("Game Data:")
+                                    .setMessage("Data game GTA SA perlu diunduh/diperbarui agar game berjalan normal. Unduh data game sekarang?")
+                                    .setPositiveButton("Unduh Data", (dialog, which) -> {
                                         Intent intent = new Intent(SplashActivity.this, UpdateActivity.class);
                                         intent.putExtra("mode", UpdateActivity.UpdateMode.GameUpdate.name());
                                         startActivity(intent);
                                         finish();
-                                    }).setNegativeButton("No", (dialog, which) -> {
+                                    }).setNegativeButton("Lewati (Masuk Menu)", (dialog, which) -> {
                                         startMain();
                                     }).setCancelable(false).show();
                         } catch (Exception e) {
                             e.printStackTrace();
+                            startMain();
                         }
                     } else {
                         startMain();
                     }
-                }
             }
         }
     }

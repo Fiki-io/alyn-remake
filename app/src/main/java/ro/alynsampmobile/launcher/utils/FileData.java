@@ -46,13 +46,23 @@ public class FileData {
 
     public static ArrayList<FileData> getListByJson(JSONObject json) throws JSONException {
         ArrayList<FileData> list = new ArrayList<>();
+        if (!json.has("files")) return list;
         JSONArray arr = json.getJSONArray("files");
         for (int i = 0; i < arr.length(); i++) {
-            list.add(new FileData(arr.getJSONObject(i).getString("name"),
-                    arr.getJSONObject(i).getString("path"),
-                    arr.getJSONObject(i).getLong("size"),
-                    arr.getJSONObject(i).getString("url"),
-                    arr.getJSONObject(i).getString("gpu")));
+            JSONObject obj = arr.getJSONObject(i);
+            String name = obj.optString("name", "");
+            String path = obj.optString("path", "");
+            long size = 0;
+            try {
+                size = obj.optLong("size", 0);
+                if (size == 0 && obj.has("size")) {
+                    size = Long.parseLong(obj.getString("size"));
+                }
+            } catch (Exception ignored) {
+            }
+            String url = obj.optString("url", "");
+            String gpu = obj.optString("gpu", "all");
+            list.add(new FileData(name, path, size, url, gpu));
         }
         return list;
     }

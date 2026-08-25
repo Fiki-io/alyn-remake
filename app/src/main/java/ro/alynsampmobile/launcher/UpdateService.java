@@ -160,17 +160,16 @@ public class UpdateService extends Service {
                             }
                         }
 
-                        String data_url = getSharedPreferences("samp_settings", Context.MODE_PRIVATE).getString("files_type", "none").equals("full") ?
-                                data.getString("full_list_url") : data.getString("lite_list_url");
-                        String samp_data_url = data.getString("samp_list_url");
+                        String data_url = data.optString("game_files", "");
+                        if (data_url.isEmpty()) {
+                            data_url = getSharedPreferences("samp_settings", Context.MODE_PRIVATE).getString("files_type", "none").equals("full") ?
+                                    data.optString("full_list_url", "https://alynsampmobile.pro/api/game-files") : data.optString("lite_list_url", "https://alynsampmobile.pro/api/game-files");
+                        }
+                        String samp_data_url = data.optString("samp_list_url", "");
 
                         checkGameFilesUpdate(data_url, samp_data_url);
 
-                        if (!isGamePackageExists()) {
-                            mGameStatus = UpdateActivity.GameStatus.GameUpdateRequired;
-                        } else if (isGameUpdateExists() && !BuildConfig.DEBUG) {
-                            mGameStatus = UpdateActivity.GameStatus.GameUpdateRequired;
-                        } else if (isGameFilesUpdateExists()) {
+                        if (isGameFilesUpdateExists()) {
                             mGameStatus = UpdateActivity.GameStatus.GameFilesUpdateRequired;
                         } else {
                             mGameStatus = UpdateActivity.GameStatus.Updated;

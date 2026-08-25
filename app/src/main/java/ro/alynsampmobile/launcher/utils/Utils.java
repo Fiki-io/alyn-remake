@@ -48,13 +48,13 @@ public class Utils {
     public static String copyright = "Copyright © Alyn_SAMPMOBILE";
     public static String web = "https://alynsampmobile.pro/";
     public static String github = "https://github.com/alyn-dev";
-    public static String update = web + "update.json";
+    public static String update = web + "api/update";
     public static String discord = web + "discord";
-    public static String changelog = web + "changelog.txt";
-    public static String hostedServersFileStr = web + "servers.json";
-    public static String bannedServersFileStr = web + "banned.json";
-    public static String faqURL = web + "faq.json";
-    public static String previewsUrl = web + "images/previews.json";
+    public static String changelog = web + "api/changelog";
+    public static String hostedServersFileStr = web + "api/servers";
+    public static String bannedServersFileStr = web + "api/banned";
+    public static String faqURL = web + "api/faq";
+    public static String previewsUrl = web + "api/previews";
 
     private static List<PreviewAdapter.PreviewItem> cachedPreviews = null;
     private static List<SupportPageFragment.FAQItem> cachedFaqs = null;
@@ -74,21 +74,22 @@ public class Utils {
             try {
                 String out = getStringOutputByURL(update);
                 JSONObject json = new JSONObject(out);
-                return json.getBoolean("app_status");
+                if (json.has("app_status")) {
+                    return json.getBoolean("app_status");
+                }
+                return json.has("game_version");
             } catch (IOException | JSONException e) {
                 System.out.println("Failed to get app status: " + e.getMessage());
-                return false;
+                return true;
             }
         });
 
-        boolean status = false;
+        boolean status = true;
         try {
-            // Wait for the completion of the thread and get the result.
-            // You might want to specify a timeout to avoid waiting indefinitely.
-            status = future.get(); // You can add a timeout here if necessary
+            status = future.get();
         } catch (InterruptedException | ExecutionException e) {
             System.out.println("2Failed to get app status: " + e.getMessage());
-            Thread.currentThread().interrupt(); // Restore interrupted status
+            Thread.currentThread().interrupt();
         } finally {
             executor.shutdown();
         }
@@ -185,7 +186,15 @@ public class Utils {
         System.out.println("getChangelog");
 
         try {
-            return getStringOutputByURL(changelog);
+            String out = getStringOutputByURL(changelog);
+            try {
+                JSONObject json = new JSONObject(out);
+                if (json.has("content")) {
+                    return json.getString("content");
+                }
+            } catch (JSONException ignored) {
+            }
+            return out;
         } catch (IOException e) {
             e.printStackTrace();
         }
