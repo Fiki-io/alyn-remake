@@ -485,6 +485,61 @@ DECL_HOOK(uint64_t *, RQCommand_rqSetAlphaTest, uint64_t *result)
 	return result;
 }
 
+#if !VER_x32
+DECL_HOOK(int, ReallocAndFixupSuperBlock, void *pipeline, uint32_t newSize)
+{
+	uint8_t *pPipe = (uint8_t *)pipeline;
+	void *oldSuperBlock = *(void **)(pPipe + 48);
+
+	typedef void *(*RwReallocFn)(void *mem, size_t size);
+	uintptr_t rwEngineInstance = *g_saSym->GetSymbol<uintptr_t *>("RwEngineInstance");
+	RwReallocFn rwRealloc = *(RwReallocFn *)(rwEngineInstance + 600);
+
+	void *newSuperBlock = rwRealloc(oldSuperBlock, newSize);
+	if (!newSuperBlock)
+	{
+		return 0;
+	}
+
+	intptr_t diff = (intptr_t)newSuperBlock - (intptr_t)oldSuperBlock;
+
+	*(void **)(pPipe + 48) = newSuperBlock; // superBlock
+	*(uint32_t *)(pPipe + 56) = newSize;   // superBlockSize
+	*(void **)(pPipe + 8) = newSuperBlock;  // nodes
+
+	// Fix embeddedPacket
+	void *embeddedPacket = *(void **)(pPipe + 24);
+	if (embeddedPacket)
+	{
+		*(void **)(pPipe + 24) = (void *)((intptr_t)embeddedPacket + diff);
+	}
+
+	// Fix packet
+	void *packet = *(void **)(pPipe + 40);
+	if (packet)
+	{
+		*(void **)(pPipe + 40) = (void *)((intptr_t)packet + diff);
+	}
+
+	uint32_t numNodes = *(uint32_t *)(pPipe + 4);
+	uint8_t *pNode = (uint8_t *)newSuperBlock;
+
+	for (uint32_t i = 0; i < numNodes; i++, pNode += 80)
+	{
+		for (int offset = 16; offset <= 56; offset += 8)
+		{
+			void *ptr = *(void **)(pNode + offset);
+			if (ptr)
+			{
+				*(void **)(pNode + offset) = (void *)((intptr_t)ptr + diff);
+			}
+		}
+	}
+
+	return 1;
+}
+#endif
+
 DECL_HOOK(int, GetInputType)
 {
 	return 0;
@@ -944,12 +999,17 @@ void Hooks::install()
 	HOOK("_ZN22TextureDatabaseRuntime8GetEntryEPKcRb", TextureDatabaseRuntime_GetEntry);
 	HOOK("_ZN10CPlayerPed29GetPlayerInfoForThisPlayerPedEv", GetPlayerInfoForThisPlayerPed);
 
+#if !VER_x32
+	HOOK_ADDR((void *)g_saSym->Abs(0x278df8), ReallocAndFixupSuperBlock, false);
+#endif
+
 	if (!eglGetProcAddress("glAlphaFuncQCOM"))
 	{
 		// If "glAlphaFuncQCOM" is not available, try "glAlphaFunc"
 		if (eglGetProcAddress("glAlphaFunc"))
 		{
 			// If "glAlphaFunc" is found, store the address in the global library
+			Memory::protectAddr(g_saSym->Abs(VER_x32 ? 0x6BCBF8 : 0x89A1B0));
 			*((void **)(g_saSym->Abs(VER_x32 ? 0x6BCBF8 : 0x89A1B0))) = (void *)eglGetProcAddress("glAlphaFunc");
 		}
 		else
