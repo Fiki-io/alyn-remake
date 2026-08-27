@@ -23,3 +23,4 @@ Released publicly and for free by the author. If you paid someone for this sourc
 
 - `app/build.gradle` still says `versionName "17.0"` — the 17.1 bump was never committed; this is the final state of the 17.x line before the launcher was rewritten.
 - Study it, learn from it, build something better.
+.
